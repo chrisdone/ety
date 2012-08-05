@@ -31,7 +31,7 @@ instance Exception EOException
 -- | Get a random Etymology Online entry.
 getRandomEntry :: IO (String,String)
 getRandomEntry = do
-  converter <- open "windows-1252" Nothing
+  converter <- open "utf-8" Nothing
   letter <- randomRIO ('a','z')
   pages <- getletterpages converter letter
   pagenumber <- randomRIO (1,pages)
@@ -48,7 +48,7 @@ getletterpages converter l = withCurlDo $ do
   case code of
     CurlOK -> do
       let doc = parseEOXML converter (bytes :: ByteString)
-      maybe (return 0) -- Some pages don't have pagination at all.
+      maybe (return 1) -- Some pages don't have pagination at all.
             (return . length)
             (getlinks doc)
     _ -> throw (CannotDownloadPageCountForLetter l)
@@ -57,7 +57,7 @@ getletterpages converter l = withCurlDo $ do
 -- | Get the entries for a letter and page number.
 getletterentries :: Converter -> Char -> Int -> IO [(String,String)]
 getletterentries converter l pn = withCurlDo $ do
-  (code,bytes) <- curlGetString_ url [] 
+  (code,bytes) <- curlGetString_ url []
   case code of
     CurlOK -> do
       let doc = parseEOXML converter (bytes :: ByteString)
@@ -72,7 +72,7 @@ getentries doc = do
   let dts = grab "dt" el
       dds = grab "dd" el
   return (zip dts dds)
-    
+
   where grab key = map (trim . allContent)
                  . findElements (qname key xhtml)
 
@@ -92,7 +92,7 @@ paginglist el = findAttr (qname "class" Nothing) el == Just "paging"
 paginglinks :: Element -> [String]
 paginglinks = mapMaybe (findAttr (qname "href" Nothing))
             . getels "a"
-              
+
   where getels key = findElements (qname key xhtml)
 
 -- Get all text content of an element.
@@ -110,7 +110,7 @@ parseEOXML converter =
   parseXMLDoc . toUnicode converter
 
 -- Some utils.
-      
+
 xhtml :: Maybe String
 xhtml = Just "http://www.w3.org/1999/xhtml"
 
